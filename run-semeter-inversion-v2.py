@@ -6,7 +6,6 @@
 # written by Riley Troyer Fall 2021
 
 
-
 # Libraries
 from datetime import datetime as dt
 import gc
@@ -151,7 +150,7 @@ def get_isr_data(pfisr_filename, pfisr_data_dir):
     
     return utc_time, pfisr_altitude, e_density, de_density
 
-def get_msis_density(run_time, altitudes_z, max_alt=1001e3,
+def get_msis_density(run_time, altitude_bins, max_alt=1001e3,
                      glat=65.117, glon=212.540):
     """Function to get MSIS calculated atmospheric densities.
     DEPENDENCIES
@@ -181,11 +180,11 @@ def get_msis_density(run_time, altitudes_z, max_alt=1001e3,
     """
     
     # Run msis for lower altitudes
-    msis_run_low = msise00.run(time=run_time, altkm=altitudes_z/1000,
+    msis_run_low = msise00.run(time=run_time, altkm=altitude_bins/1000,
                                glat=pfrr_lat, glon=pfrr_lon)
 
     # Define a higher altitude array
-    msis_alt_high = np.logspace(np.log10(max(altitudes_z)+1),
+    msis_alt_high = np.logspace(np.log10(max(altitude_bins)+1),
                                 np.log10(max_alt), 20)
     
     # Run msis for these higher altitudes
@@ -197,7 +196,7 @@ def get_msis_density(run_time, altitudes_z, max_alt=1001e3,
     msis_density_high = msis_run_high['Total'].data[0, :, 0, 0]
 
     # Combine altitude and densities from low and high altitudes
-    total_msis_alt = np.concatenate((altitudes_z, msis_alt_high))
+    total_msis_alt = np.concatenate((altitude_bins, msis_alt_high))
     total_msis_density = np.concatenate((msis_density_low,
                                          msis_density_high))
 
@@ -239,17 +238,16 @@ def isr_ion_production_rate(slice_n):
     #...below this data can be weird
     pfisr_density_interp = interp1d(pfisr_altitude[pfisr_altitude
                                                    > pfisr_min_alt],
-                                    e_density_slice[pfisr_altitude
-                                                    > pfisr_min_alt])
+                                    e_density_slice)
 
     # Same interpolation except for error in density
     pfisr_error_interp = interp1d(pfisr_altitude[pfisr_altitude
                                                  > pfisr_min_alt],
-                                  de_density_slice[pfisr_altitude
-                                                   > pfisr_min_alt])
+                                  de_density_slice)
 
     # Calculate all recombination coeffcients
-    alphas = np.array([recombination_coeff(z/1000) for z in altitude_bins])
+    alphas = np.array([recombination_coeff(z/1000) for z 
+                       in altitude_bins])
 
     # Multiply by pfisr density to get an estimate of ion production rate
     q_estimate = alphas * pfisr_density_interp(altitude_bins)**2
@@ -283,14 +281,17 @@ def mass_distance(z_i, I=0):
     
     return s
 
-def maximum_entropy_iteration(initial_num_flux, altitude_bins, energy_bins,
-                               matrix_A, q_estimate, dq_estimate):
-    """Function to peform the maximum entropy iterative process to approximate
-    inversion of matrix A. Process is outlined in Semeter & Kamalabadi 2005.
+def maximum_entropy_iteration(initial_num_flux, altitude_bins,
+                              energy_bins, matrix_A,
+                              q_estimate, dq_estimate):
+    """Function to peform the maximum entropy iterative process 
+    to approximate inversion of matrix A. Process is 
+    outlined in Semeter & Kamalabadi 2005.
     INPUT
     initial_num_flux
         type: array of float
-        about: initial guess of number flux for each energy bin in m^-2 s^-1
+        about: initial guess of number flux for each energy bin in
+               m^-2 s^-1
     altitude_bins
         type: array of float
         about: altitude values in meters defining altitude bins
@@ -450,7 +451,7 @@ def save_inversion_density_plot(inversion_results, run_time, output_dir):
     none
     """
     # Get altitude values
-    altitudes_z = inversion_results[run_time]['altitude'][good_alt_index:]
+    altitude_bins=inversion_results[run_time]['altitude'][good_alt_index:]
 
     # Get measured density
     pfisr_density_plot = inversion_results[run_time]['measured_density']
@@ -485,15 +486,15 @@ def save_inversion_density_plot(inversion_results, run_time, output_dir):
     ax.set_xscale('log')
 
     # Plot PFISR data
-    ax.plot(pfisr_density_plot, altitudes_z/1000,
+    ax.plot(pfisr_density_plot, altitude_bins/1000,
             color='k', linewidth=2, label = 'PFISR')
 
     # Plot initial guess
-    ax.plot(initial_guess_plot, altitudes_z/1000,
+    ax.plot(initial_guess_plot, altitude_bins/1000,
             color='C2', linewidth=2, label = 'Initial Guess')
 
     # Plot final guess
-    ax.plot(final_guess_plot, altitudes_z/1000,
+    ax.plot(final_guess_plot, altitude_bins/1000,
             color='C1', linewidth=2, label = 'Final Guess')
 
     plt.legend()
@@ -584,12 +585,8 @@ def save_inversion_numflux_plot(inversion_results, run_time, output_dir):
     #...clear memory
     gc.collect()
 
-
-#########################################################
-# Start of main program
-
 # Read in config file with dictionary of specified inputs
-import config_2021_09_28 as config
+import config_2021_09_29 as config
 config_data = config.run_info['config_info']
 
 # Path to pfisr data directory
@@ -605,7 +602,8 @@ F = config_data['test_flux']
 # Don't use PFISR data below this altitude in km
 pfisr_min_alt = config_data['isr_min_alt']
 
-# Altitude in meters to approximate infinity when calculating mass distance
+# Altitude in meters to approximate infinity when 
+#...calculating mass distance
 max_msis_alt = config_data['max_msis_alt']
 
 # Maximum number of iterations to run maximum entropy process on
@@ -622,7 +620,8 @@ altitude_bins = config_data['altitude_bins']
 energy_bins = config_data['energy_bins']
 
 # Get files to run code for
-pfisr_files = config.run_info['run_files']
+pfisr_files = config.run_info['run_files'][2:]
+
 
 # Read in file with energy dissipation function
 lambda_filename = 'semeter_kamalabadi_lambda_function.txt'
@@ -632,6 +631,7 @@ lambda_data = np.loadtxt(lambda_filename, skiprows=5)
 #...values outside set to 0
 lambda_interp = interp1d(lambda_data[:, 0], lambda_data[:, 1],
                          bounds_error=False, fill_value=0)
+
 
 for pfisr_filename in pfisr_files:    
     
