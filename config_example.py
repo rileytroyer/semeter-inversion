@@ -19,14 +19,16 @@ d = {
     'isr_data_dir' : '../source-energy-pa/data/pfisr-data/mswinds/',
     'isr_lat' : 65.117,
     'isr_lon' : 212.540,
-    'isr_min_alt' : 50,
+    'isr_min_alt' : 60,
+    'isr_smooth_window' : 15,
+    'isr_smooth_poly_order' : 3,
     'max_msis_alt' : 1001e3,
     'max_iterations' : 1000,
     'test_flux' : 1e11,	
-    'altitude_bins' : np.linspace(50e3, 140e3, 100),
-    'energy_bins' : np.logspace(np.log10(1000), np.log10(200000), 50),
-    'start_file_i' : -2,
-    'end_file_i' : -1
+    'altitude_bins' : np.linspace(60e3, 140e3, 100),
+    'energy_bins' : np.logspace(np.log10(1000), np.log10(500000), 100),
+    'start_file_i' : 0,
+    'end_file_i' : None
 
 }
 

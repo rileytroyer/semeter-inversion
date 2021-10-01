@@ -5,7 +5,6 @@
 # 
 # written by Riley Troyer Fall 2021
 
-
 # Libraries
 from datetime import datetime as dt
 import gc
@@ -25,7 +24,7 @@ np.seterr(invalid='ignore')
 
 
 # Read in config file with dictionary of specified inputs
-import config_2021_09_30 as config
+import config_2021_09_30_v2 as config
 config_data = config.run_info['config_info']
 
 # Path to pfisr data directory
@@ -428,8 +427,9 @@ def maximum_entropy_iteration(initial_num_flux, altitude_bins,
             new_num_flux[j] = old_num_flux[j]/(1-old_num_flux[j]*i_sum)
 
         # Check chi squared, but only on altitudes that A is defined for
-        diff = q_estimate - np.dot(matrix_A, new_num_flux)
-        chi_square_array = diff**2/dq_estimate**2
+        diff=q_estimate[good_alt_index:]-np.dot(matrix_A,
+                                                new_num_flux)[good_alt_index:]
+        chi_square_array = diff**2/dq_estimate[good_alt_index:]**2
 
         # Set undefined values to zero
         chi_square_array[np.isnan(chi_square_array)] = 0
@@ -440,7 +440,7 @@ def maximum_entropy_iteration(initial_num_flux, altitude_bins,
         chi_square = np.sum(chi_square_array)
 
         # And the reduced chi square, which should be around 1
-        reduced_chi_square = chi_square/(len(diff[good_alt_index:])-1)
+        reduced_chi_square = chi_square/(len(diff)-1)
 
         # Set old value to new
         old_num_flux = np.copy(new_num_flux)
@@ -628,7 +628,6 @@ def save_inversion_numflux_plot(inversion_results, run_time, output_dir):
     plt.close('all')
     #...clear memory
     gc.collect()
-
 
 # Read in file with energy dissipation function
 lambda_filename = 'semeter_kamalabadi_lambda_function.txt'

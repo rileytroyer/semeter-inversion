@@ -25,8 +25,8 @@ d = {
     'test_flux' : 1e11,	
     'altitude_bins' : np.linspace(50e3, 140e3, 100),
     'energy_bins' : np.logspace(np.log10(1000), np.log10(200000), 50),
-    'start_file_i' : -2,
-    'end_file_i' : -1
+    'start_file_i' : 0,
+    'end_file_i' : None
 
 }
 
