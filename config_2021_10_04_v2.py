@@ -29,13 +29,13 @@ d = {
     'isr_smooth_window' : 15,
     'isr_smooth_poly_order' : 3,
     'max_msis_alt' : 1001e3,
-    'max_iterations' : 1000,
+    'max_iterations' : 10000,
     'reduced_chi_square': 1.05,
     'test_flux' : 1e11,	
     'altitude_bins' : np.linspace(60e3, 144e3, 100),
-    'energy_bins' : np.logspace(np.log10(1000), np.log10(300000), 50),
-    'start_file_i' : 12,
-    'end_file_i' : 13
+    'energy_bins' : np.logspace(np.log10(1000), np.log10(500000), 50),
+    'start_file_i' : 20,
+    'end_file_i' : 40
 
 }
 

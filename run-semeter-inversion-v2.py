@@ -5,6 +5,8 @@
 # 
 # written by Riley Troyer Fall 2021
 
+# In[1]:
+
 
 # Libraries
 from datetime import datetime as dt
@@ -17,11 +19,66 @@ import numpy as np
 import os
 import pickle
 from scipy.interpolate import interp1d
+from scipy.signal import savgol_filter
 from scipy.integrate import trapezoid
 
 # Disable divide by zero numpy warnings
 np.seterr(divide='ignore')
 np.seterr(invalid='ignore')
+
+
+# In[2]:
+
+
+# Read in config file with dictionary of specified inputs
+import config_2021_10_04_v2 as config
+config_data = config.run_info['config_info']
+
+# Path to pfisr data directory
+pfisr_data_dir = config_data['isr_data_dir']
+
+# Get location of PFISR
+pfrr_lat = config_data['isr_lat']
+pfrr_lon = config_data['isr_lon']
+
+# Define test flux in m^-2 s^-1
+F = config_data['test_flux']
+
+# Don't use PFISR data below this altitude in km
+pfisr_min_alt = config_data['isr_min_alt']
+
+# Get sensitivity limit of PFISR
+pfisr_sensitivity = config_data['isr_sensitivity']
+
+# Parameters for smoothing PFISR data
+pfisr_smooth_window = config_data['isr_smooth_window']
+pfisr_smooth_poly_order = config_data['isr_smooth_poly_order']
+
+# Altitude in meters to approximate infinity when calculating
+#...mass distance
+max_msis_alt = config_data['max_msis_alt']
+
+# Maximum number of iterations to run maximum entropy process on
+max_iterations = config_data['max_iterations']
+
+# Reduced chi square to aim for
+good_fit = config_data['reduced_chi_square']
+
+# Define arrays for altitude and energy bins
+
+# Altitude in meters
+#...number of points should be around the same as pfisr data
+altitude_bins = config_data['altitude_bins']
+
+# Energies in eV
+#...should probably be less than altitude bins to avoid overfitting
+energy_bins = config_data['energy_bins']
+
+# Get files to run code for
+pfisr_files = config.run_info['run_files']
+
+
+# In[4]:
 
 
 # Functions used in program. Alphabetically.
@@ -131,19 +188,35 @@ def get_isr_data(pfisr_filename, pfisr_data_dir):
     e_density = np.array(pfisr_file['NeFromPower']
                          ['Ne_NoTr'])[:, beam_num, :]
 
-    # Filter it assuming data outside of range is bad
-    low_cutoff = 0
-    high_cutoff=1e12
-    e_density[e_density < low_cutoff] = 0.0
-    e_density[e_density > high_cutoff] = 0.0
-
     # Take the transpose
     e_density = np.transpose(e_density)
-
+    
+    # Smooth the electron density
+    window = pfisr_smooth_window
+    poly_order = pfisr_smooth_poly_order
+    e_density = savgol_filter(e_density, window, poly_order,
+                              axis=0)
+    
+    # Find the noise floor by averaging between 55km and 60km
+    #...assume this should be zero
+    noise_floor = np.mean(e_density[(pfisr_altitude > 55000)
+                                    & (pfisr_altitude < 60000), :],
+                          axis=0)
+    
+    # Loop through each column and subtract off noise floor
+    for j in range(e_density.shape[1]):
+        e_density[:, j] = e_density[:, j] - noise_floor[j]
+    
     # Get error values
     de_density = np.array(pfisr_file['NeFromPower']
                           ['errNe_NoTr'])[:, beam_num, :]
     de_density = np.transpose(de_density)
+    
+    # Trying to figure out how to adjust errors based on smoothing
+    adjustment = np.sqrt((3 * (3 * window**2 - 7))
+                         /(4 * window * (window**2 - 4)))
+    
+    de_density = de_density * adjustment
 
     # Close file
     pfisr_file.close()
@@ -227,23 +300,13 @@ def isr_ion_production_rate(slice_n):
     e_density_slice = e_density[:, slice_n]
     de_density_slice = de_density[:, slice_n]
 
-    # Only take value above 50 km, below data can be off
-    e_density_slice = e_density_slice[pfisr_altitude > pfisr_min_alt]
-
-    de_density_slice = de_density_slice[pfisr_altitude > pfisr_min_alt]
-
-
     # Make an interpolation model of this data with respect to altitude
     #...but only do this for altitudes > defined minimum value,
     #...below this data can be weird
-    pfisr_density_interp = interp1d(pfisr_altitude[pfisr_altitude
-                                                   > pfisr_min_alt],
-                                    e_density_slice)
+    pfisr_density_interp = interp1d(pfisr_altitude, e_density_slice)
 
     # Same interpolation except for error in density
-    pfisr_error_interp = interp1d(pfisr_altitude[pfisr_altitude
-                                                 > pfisr_min_alt],
-                                  de_density_slice)
+    pfisr_error_interp = interp1d(pfisr_altitude, de_density_slice)
 
     # Calculate all recombination coeffcients
     alphas = np.array([recombination_coeff(z/1000) for z 
@@ -255,6 +318,12 @@ def isr_ion_production_rate(slice_n):
     # Get error dq = 2*alpha*n*dn
     dq_estimate = (2 * alphas * pfisr_density_interp(altitude_bins)
                    * pfisr_error_interp(altitude_bins))
+    
+#     # Value below specified height km, assume are zero below data can be off
+#     q_estimate[altitude_bins < pfisr_min_alt] = 0
+    
+#     # Also anywhere where error is larger than value set to zero
+#     q_estimate[q_estimate <= dq_estimate] = 0
     
     return q_estimate, dq_estimate, alphas
 
@@ -281,17 +350,14 @@ def mass_distance(z_i, I=0):
     
     return s
 
-def maximum_entropy_iteration(initial_num_flux, altitude_bins,
-                              energy_bins, matrix_A,
-                              q_estimate, dq_estimate):
-    """Function to peform the maximum entropy iterative process 
-    to approximate inversion of matrix A. Process is 
-    outlined in Semeter & Kamalabadi 2005.
+def maximum_entropy_iteration(initial_num_flux, altitude_bins, energy_bins,
+                               matrix_A, q_estimate, dq_estimate):
+    """Function to peform the maximum entropy iterative process to approximate
+    inversion of matrix A. Process is outlined in Semeter & Kamalabadi 2005.
     INPUT
     initial_num_flux
         type: array of float
-        about: initial guess of number flux for each energy bin in
-               m^-2 s^-1
+        about: initial guess of number flux for each energy bin in m^-2 s^-1
     altitude_bins
         type: array of float
         about: altitude values in meters defining altitude bins
@@ -345,13 +411,13 @@ def maximum_entropy_iteration(initial_num_flux, altitude_bins,
     # Find the index past which A is defined for altitudes
     good_alt_index = np.argwhere(min_js>0)[0][0]
 
-    # Run interations until chi2 < 1.5
+    # Run interations until chi2 < specified value
     reduced_chi_square = 10
 
     # Or count < specified amount
     count = 0
 
-    while (reduced_chi_square > 1.5):    
+    while (reduced_chi_square > good_fit):
 
         # Check count
         if count > max_iterations:
@@ -390,7 +456,7 @@ def maximum_entropy_iteration(initial_num_flux, altitude_bins,
             new_num_flux[j] = old_num_flux[j]/(1-old_num_flux[j]*i_sum)
 
         # Check chi squared, but only on altitudes that A is defined for
-        diff = q_estimate - np.dot(matrix_A, new_num_flux)
+        diff=q_estimate-np.dot(matrix_A, new_num_flux)
         chi_square_array = diff**2/dq_estimate**2
 
         # Set undefined values to zero
@@ -402,7 +468,16 @@ def maximum_entropy_iteration(initial_num_flux, altitude_bins,
         chi_square = np.sum(chi_square_array)
 
         # And the reduced chi square, which should be around 1
-        reduced_chi_square = chi_square/(len(diff[good_alt_index:])-1)
+        reduced_chi_square = chi_square/(len(diff)-1)
+        
+        # If reduced chi square less than 1 report and stop
+        if reduced_chi_square < 1:
+            print('Slice: {slice_n}. '
+                  'Possible overfitting. Stopping. '
+                  'chi2 = {chi2}'
+                  .format(slice_n=slice_n,
+                          chi2=round(reduced_chi_square, 2)))
+            break
 
         # Set old value to new
         old_num_flux = np.copy(new_num_flux)
@@ -410,7 +485,7 @@ def maximum_entropy_iteration(initial_num_flux, altitude_bins,
         # Set count
         count = count + 1
 
-    if count < max_iterations:
+    if (count < max_iterations) & (reduced_chi_square >= 1):
         print('Slice: {slice_n}. '
               'Convergence reached. '
               'Iterations: {count}'.format(slice_n=slice_n,
@@ -451,19 +526,19 @@ def save_inversion_density_plot(inversion_results, run_time, output_dir):
     none
     """
     # Get altitude values
-    altitude_bins=inversion_results[run_time]['altitude'][good_alt_index:]
+    altitude_bins=inversion_results[run_time]['altitude']
 
     # Get measured density
     pfisr_density_plot = inversion_results[run_time]['measured_density']
-    pfisr_density_plot = pfisr_density_plot[good_alt_index:]
+    pfisr_density_plot = pfisr_density_plot
 
     # Initial guess
     initial_guess_plot = inversion_results[run_time]['initial_density']
-    initial_guess_plot = initial_guess_plot[good_alt_index:]
+    initial_guess_plot = initial_guess_plot
     
     # Finally modeled guess
     final_guess_plot = inversion_results[run_time]['modeled_density']
-    final_guess_plot = final_guess_plot[good_alt_index:]
+    final_guess_plot = final_guess_plot
     
     # Get chi2
     reduced_chi2 = inversion_results[run_time]['reduced_chi2']
@@ -536,10 +611,15 @@ def save_inversion_numflux_plot(inversion_results, run_time, output_dir):
     none
     """
     # Get energy values
-    energies_K = inversion_results[run_time]['energy_bins']
+    energy_bins = inversion_results[run_time]['energy_bins']
     
-    # Get modeled number flux values
-    num_flux = inversion_results[run_time]['modeled_flux']
+    # Get modeled differential number flux values
+    #...to do this first need energy bin widths
+    bin_widths = energy_bins - np.roll(energy_bins, shift=1)
+    #...fix first value
+    bin_widths[0] = energy_bins[0] - 0
+    
+    num_flux = inversion_results[run_time]['modeled_flux']*bin_widths
     
     # Get chi2
     reduced_chi2 = inversion_results[run_time]['reduced_chi2']
@@ -552,7 +632,8 @@ def save_inversion_numflux_plot(inversion_results, run_time, output_dir):
                  + str(round(reduced_chi2, 2)),
                  fontsize=14, fontweight='bold')
 
-    ax.set_ylabel(r'Number Flux [m$^{-2}$ s$^{-1}$]', fontsize=14)
+    ax.set_ylabel(r'Differential Flux'
+                  r'[m$^{-2}$ s$^{-1}$ eV$^{-1}$]', fontsize=14)
     ax.set_xlabel('Energy [eV]', fontsize=14)
 
     # Axis
@@ -563,7 +644,7 @@ def save_inversion_numflux_plot(inversion_results, run_time, output_dir):
     ax.set_yscale('log')
 
     # Plot the energy
-    ax.plot(energies_K, num_flux)
+    ax.plot(energy_bins, num_flux)
 
     plt.tight_layout()
     
@@ -585,42 +666,8 @@ def save_inversion_numflux_plot(inversion_results, run_time, output_dir):
     #...clear memory
     gc.collect()
 
-# Read in config file with dictionary of specified inputs
-import config_2021_09_29 as config
-config_data = config.run_info['config_info']
 
-# Path to pfisr data directory
-pfisr_data_dir = config_data['isr_data_dir']
-
-# Get location of PFISR
-pfrr_lat = config_data['isr_lat']
-pfrr_lon = config_data['isr_lon']
-
-# Define test flux in m^-2 s^-1
-F = config_data['test_flux']
-
-# Don't use PFISR data below this altitude in km
-pfisr_min_alt = config_data['isr_min_alt']
-
-# Altitude in meters to approximate infinity when 
-#...calculating mass distance
-max_msis_alt = config_data['max_msis_alt']
-
-# Maximum number of iterations to run maximum entropy process on
-max_iterations = config_data['max_iterations']
-
-# Define arrays for altitude and energy bins
-
-# Altitude in meters
-#...number of points should be around the same as pfisr data
-altitude_bins = config_data['altitude_bins']
-
-# Energies in eV
-#...should probably be less than altitude bins to avoid overfitting
-energy_bins = config_data['energy_bins']
-
-# Get files to run code for
-pfisr_files = config.run_info['run_files'][2:]
+# In[5]:
 
 
 # Read in file with energy dissipation function
@@ -631,6 +678,9 @@ lambda_data = np.loadtxt(lambda_filename, skiprows=5)
 #...values outside set to 0
 lambda_interp = interp1d(lambda_data[:, 0], lambda_data[:, 1],
                          bounds_error=False, fill_value=0)
+
+
+# In[ ]:
 
 
 for pfisr_filename in pfisr_files:    
@@ -730,7 +780,8 @@ for pfisr_filename in pfisr_files:
                  'energy_bins' : energy_bins,
                  'modeled_flux' : new_num_flux,
                  'reduced_chi2' : reduced_chi_square,
-                 'units' : 'Values given in meters, seconds, electron-volts.'
+                 'units' : 'Values given in meters, seconds, electron-volts.',
+                 'notes' : 'modeled_flux is differential number flux/eV'
                 }
 
             inversion_results[run_time] = d
@@ -738,6 +789,11 @@ for pfisr_filename in pfisr_files:
             # Plot the results and save to output directory
             save_inversion_density_plot(inversion_results, run_time, output_dir)
             save_inversion_numflux_plot(inversion_results, run_time, output_dir)
+
+            # Clear temporary files in /dev/shm directory in Linux
+            try:
+                os.system('rm /dev/shm/*')
+            except Exception as e: print(e)
 
         # Write the dictionary with inversion data to a pickle file
         with open(output_dir + 'inversion-data-' + str(utc_time[0].date()) 
@@ -748,3 +804,10 @@ for pfisr_filename in pfisr_files:
         print('Finished!')
 
     except Exception as e: print(e)
+
+
+# In[ ]:
+
+
+
+

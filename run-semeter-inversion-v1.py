@@ -31,7 +31,7 @@ np.seterr(invalid='ignore')
 
 
 # Read in config file with dictionary of specified inputs
-import config_2021_10_04_v3 as config
+import config_2021_10_04_v1 as config
 config_data = config.run_info['config_info']
 
 # Path to pfisr data directory
@@ -787,8 +787,9 @@ for pfisr_filename in pfisr_files:
             inversion_results[run_time] = d
 
             # Plot the results and save to output directory
-            save_inversion_density_plot(inversion_results, run_time, output_dir)
-            save_inversion_numflux_plot(inversion_results, run_time, output_dir)
+            if slice_n%10 == 0:
+                save_inversion_density_plot(inversion_results, run_time, output_dir)
+                save_inversion_numflux_plot(inversion_results, run_time, output_dir)
 
             # Clear temporary files in /dev/shm directory in Linux
             try:

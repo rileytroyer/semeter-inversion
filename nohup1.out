@@ -1,0 +1,151 @@
+nohup: ignoring input
+2012-03-28
+Slice: 0. Convergence reached. Iterations: 93
+Slice: 1. Unable to converge. Max iterations reached with chi2 = 1.28
+Slice: 2. Convergence reached. Iterations: 623
+Slice: 3. Convergence reached. Iterations: 69
+Slice: 4. Convergence reached. Iterations: 602
+Slice: 5. Convergence reached. Iterations: 123
+Slice: 6. Convergence reached. Iterations: 51
+Slice: 7. Convergence reached. Iterations: 62
+Slice: 8. Convergence reached. Iterations: 214
+Slice: 9. Convergence reached. Iterations: 177
+Slice: 10. Unable to converge. Max iterations reached with chi2 = 1.54
+Slice: 11. Unable to converge. Max iterations reached with chi2 = 1.2
+Slice: 12. Convergence reached. Iterations: 377
+Slice: 13. Convergence reached. Iterations: 744
+Slice: 14. Convergence reached. Iterations: 64
+Slice: 15. Convergence reached. Iterations: 249
+Slice: 16. Convergence reached. Iterations: 175
+Slice: 17. Convergence reached. Iterations: 76
+Slice: 18. Convergence reached. Iterations: 70
+Slice: 19. Convergence reached. Iterations: 61
+Slice: 20. Convergence reached. Iterations: 182
+Slice: 21. Convergence reached. Iterations: 186
+Slice: 22. Unable to converge. Max iterations reached with chi2 = 2.22
+Slice: 23. Unable to converge. Max iterations reached with chi2 = 1.05
+Slice: 24. Convergence reached. Iterations: 1015
+Slice: 25. Convergence reached. Iterations: 99
+Slice: 26. Convergence reached. Iterations: 140
+Slice: 27. Unable to converge. Max iterations reached with chi2 = 1.18
+Slice: 28. Convergence reached. Iterations: 110
+Slice: 29. Convergence reached. Iterations: 25
+Slice: 30. Convergence reached. Iterations: 23
+Slice: 31. Convergence reached. Iterations: 82
+Slice: 32. Unable to converge. Max iterations reached with chi2 = 1.3
+Slice: 33. Convergence reached. Iterations: 49
+Slice: 34. Convergence reached. Iterations: 154
+Slice: 35. Convergence reached. Iterations: 91
+Slice: 36. Convergence reached. Iterations: 14
+Slice: 37. Convergence reached. Iterations: 16
+Slice: 38. Convergence reached. Iterations: 299
+Slice: 39. Convergence reached. Iterations: 947
+Slice: 40. Convergence reached. Iterations: 73
+Slice: 41. Convergence reached. Iterations: 93
+Slice: 42. Convergence reached. Iterations: 82
+Slice: 43. Convergence reached. Iterations: 17
+Slice: 44. Convergence reached. Iterations: 88
+Slice: 45. Possible overfitting. Stopping. chi2 = 1.0
+Slice: 46. Convergence reached. Iterations: 9
+Slice: 47. Possible overfitting. Stopping. chi2 = 0.86
+Slice: 48. Convergence reached. Iterations: 7
+Slice: 49. Unable to converge. Max iterations reached with chi2 = 1.36
+Slice: 50. Convergence reached. Iterations: 17
+Slice: 51. Convergence reached. Iterations: 7
+Slice: 52. Convergence reached. Iterations: 171
+Slice: 53. Convergence reached. Iterations: 121
+Slice: 54. Unable to converge. Max iterations reached with chi2 = 1.09
+Slice: 55. Convergence reached. Iterations: 35
+Slice: 56. Convergence reached. Iterations: 64
+Slice: 57. Convergence reached. Iterations: 61
+Slice: 58. Unable to converge. Max iterations reached with chi2 = 1.15
+Slice: 59. Unable to converge. Max iterations reached with chi2 = 1.22
+Slice: 60. Convergence reached. Iterations: 115
+Slice: 61. Convergence reached. Iterations: 420
+Slice: 62. Possible overfitting. Stopping. chi2 = 0.99
+Slice: 63. Convergence reached. Iterations: 10
+Slice: 64. Convergence reached. Iterations: 15
+Slice: 65. Convergence reached. Iterations: 97
+Slice: 66. Convergence reached. Iterations: 35
+Slice: 67. Unable to converge. Max iterations reached with chi2 = 1.45
+Slice: 68. Unable to converge. Max iterations reached with chi2 = 1.27
+Slice: 69. Unable to converge. Max iterations reached with chi2 = 1.15
+Slice: 70. Convergence reached. Iterations: 63
+Slice: 71. Convergence reached. Iterations: 12
+Slice: 72. Unable to converge. Max iterations reached with chi2 = 1.49
+Slice: 73. Unable to converge. Max iterations reached with chi2 = 1.22
+Slice: 74. Convergence reached. Iterations: 133
+Slice: 75. Convergence reached. Iterations: 169
+Slice: 76. Convergence reached. Iterations: 366
+Slice: 77. Unable to converge. Max iterations reached with chi2 = 1.09
+Slice: 78. Convergence reached. Iterations: 693
+Slice: 79. Convergence reached. Iterations: 42
+Slice: 80. Possible overfitting. Stopping. chi2 = 0.83
+Slice: 81. Convergence reached. Iterations: 66
+Slice: 82. Convergence reached. Iterations: 88
+Slice: 83. Convergence reached. Iterations: 82
+Slice: 84. Convergence reached. Iterations: 1290
+Slice: 85. Unable to converge. Max iterations reached with chi2 = 2.49
+Slice: 86. Unable to converge. Max iterations reached with chi2 = 1.1
+Slice: 87. Convergence reached. Iterations: 822
+Slice: 88. Unable to converge. Max iterations reached with chi2 = 1.2
+Slice: 89. Convergence reached. Iterations: 89
+Slice: 90. Unable to converge. Max iterations reached with chi2 = 1.08
+Slice: 91. Unable to converge. Max iterations reached with chi2 = 1.16
+Slice: 92. Unable to converge. Max iterations reached with chi2 = 1.44
+Slice: 93. Convergence reached. Iterations: 111
+Slice: 94. Convergence reached. Iterations: 70
+Slice: 95. Convergence reached. Iterations: 162
+Slice: 96. Convergence reached. Iterations: 646
+Slice: 97. Convergence reached. Iterations: 1860
+Slice: 98. Convergence reached. Iterations: 497
+Slice: 99. Unable to converge. Max iterations reached with chi2 = 1.37
+Slice: 100. Convergence reached. Iterations: 32
+Slice: 101. Convergence reached. Iterations: 2088
+Slice: 102. Unable to converge. Max iterations reached with chi2 = 1.46
+Slice: 103. Convergence reached. Iterations: 86
+Slice: 104. Convergence reached. Iterations: 340
+Slice: 105. Unable to converge. Max iterations reached with chi2 = 1.17
+Slice: 106. Unable to converge. Max iterations reached with chi2 = 1.25
+Slice: 107. Convergence reached. Iterations: 174
+Slice: 108. Unable to converge. Max iterations reached with chi2 = 1.53
+Slice: 109. Convergence reached. Iterations: 269
+Slice: 110. Unable to converge. Max iterations reached with chi2 = 1.66
+Slice: 111. Convergence reached. Iterations: 647
+Slice: 112. Convergence reached. Iterations: 50
+Slice: 113. Convergence reached. Iterations: 150
+Slice: 114. Unable to converge. Max iterations reached with chi2 = 1.4
+Slice: 115. Convergence reached. Iterations: 175
+Slice: 116. Unable to converge. Max iterations reached with chi2 = 1.23
+Slice: 117. Convergence reached. Iterations: 336
+Slice: 118. Convergence reached. Iterations: 1686
+Slice: 119. Convergence reached. Iterations: 326
+Slice: 120. Convergence reached. Iterations: 176
+Slice: 121. Convergence reached. Iterations: 244
+Slice: 122. Convergence reached. Iterations: 320
+Slice: 123. Convergence reached. Iterations: 1077
+Slice: 124. Convergence reached. Iterations: 223
+Slice: 125. Unable to converge. Max iterations reached with chi2 = 1.67
+Slice: 126. Unable to converge. Max iterations reached with chi2 = 1.23
+Slice: 127. Convergence reached. Iterations: 182
+Slice: 128. Convergence reached. Iterations: 193
+Slice: 129. Unable to converge. Max iterations reached with chi2 = 1.16
+Slice: 130. Convergence reached. Iterations: 2124
+Slice: 131. Unable to converge. Max iterations reached with chi2 = 2.71
+Slice: 132. Unable to converge. Max iterations reached with chi2 = 1.42
+Slice: 133. Unable to converge. Max iterations reached with chi2 = 1.14
+Slice: 134. Convergence reached. Iterations: 174
+Slice: 135. Convergence reached. Iterations: 686
+Slice: 136. Convergence reached. Iterations: 34
+Slice: 137. Unable to converge. Max iterations reached with chi2 = 2.82
+Slice: 138. Convergence reached. Iterations: 291
+Slice: 139. Convergence reached. Iterations: 67
+Slice: 140. Unable to converge. Max iterations reached with chi2 = 1.43
+Slice: 141. Unable to converge. Max iterations reached with chi2 = 1.34
+Slice: 142. Unable to converge. Max iterations reached with chi2 = 1.64
+Slice: 143. Convergence reached. Iterations: 1542
+Slice: 144. Unable to converge. Max iterations reached with chi2 = 1.43
+Slice: 145. Convergence reached. Iterations: 466
+Slice: 146. Convergence reached. Iterations: 235
+Slice: 147. Convergence reached. Iterations: 1924
+Slice: 148. Convergence reached. Iterations: 127
