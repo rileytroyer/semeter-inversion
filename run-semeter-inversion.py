@@ -293,7 +293,7 @@ def isr_ion_production_rate(slice_n):
     pfisr_error_interp = interp1d(pfisr_altitude, de_density_slice)
 
     # Calculate all recombination coeffcients
-    alphas = np.array([recombination_coeff(z/1000) for z 
+    alphas = np.array([better_recombination_coeff(z/1000) for z 
                        in altitude_bins])
 
     # Multiply by pfisr density to get an estimate of ion production rate
@@ -501,6 +501,44 @@ def recombination_coeff(z):
     
     alpha = 2.5e-12 * np.exp(-z/51.2)
     
+    return alpha
+
+# Read in file with effective recombination coefficient values
+alpha_filename = 'effective-recombination-coefficient.txt'
+alpha_data = np.loadtxt(alpha_filename, skiprows=6)
+
+# Get altitude and coeff from data
+alpha_alt = alpha_data[:, 0]
+alpha_coeff = alpha_data[:, 1]*1e-6
+
+# Append formula value at 144 km
+alpha_alt = np.append(alpha_alt, 144)
+alpha_coeff = np.append(alpha_coeff, recombination_coeff(144))
+
+# Create an interpolated function from this
+#...values outside set to 0
+alpha_interp = interp1d(alpha_alt, alpha_coeff,
+                         bounds_error=False, fill_value=0)
+
+def better_recombination_coeff(z):
+    """Function defining a more accurate recombination coefficient
+    INPUT
+    z
+        type:float
+        about: altitude in kilometers
+    OUTPUT
+    alpha
+        type: float
+        about: recombination coefficient in m^3/s
+    """
+    
+    # Above 90 km use formula
+    if z > 144:
+        alpha = recombination_coeff(z)
+        
+    else:
+        alpha = alpha_interp(z)
+        
     return alpha
 
 def save_inversion_density_plot(inversion_results, run_time, output_dir):
