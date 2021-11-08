@@ -11,14 +11,18 @@ I am also making a pretty strategic decision to name the functions after
 the variable names found in the GPI paper equations 1-4
 """
 
+import datetime
 import numpy
 import scipy.integrate
 import copy
 import sys
-import IRI2016
-iri2016 = IRI2016.IRI2016()
-import MSIS
-msis = MSIS.MSIS()
+# import IRI2016
+# iri2016 = IRI2016.IRI2016()
+# import MSIS
+# msis = MSIS.MSIS()
+
+import iri2016
+import msise00
 
 import matplotlib.pyplot as plt
 
@@ -138,7 +142,7 @@ class Chemistry:
                 error(['unknown option (alfai) = ' alfai_opt]);
         end
         """
-        print Nm.shape[0]
+        print(Nm.shape[0])
         alphaI = 1e-7*numpy.ones(Nm.shape) + Nm*1e-24
         return alphaI
 
@@ -366,7 +370,7 @@ class Chemistry:
         outDict['NX'] = numpy.zeros(N)
         outDict['NposIon'] = numpy.zeros(N)
         outDict['NposCluster'] = numpy.zeros(N)
-        print 'NeIn.shape', NeIn['Ne'].shape, N
+        print('NeIn.shape', NeIn['Ne'].shape, N)
         for iz in range(N):
 
             args[0] = Sin[iz];
@@ -466,7 +470,7 @@ class Chemistry:
             kk=+1
 
             if kk==100:
-                print 'could not find bounds'
+                print('could not find bounds')
                 break
             PrevSign = copy.copy(Sign)
             Neprev = copy.copy(NeTest)
@@ -515,7 +519,7 @@ class Chemistry:
 
             kk=+1
             if kk == 100:
-                print 'too many iterations in binary search'
+                print('too many iterations in binary search')
                 break
 
         # output phase
@@ -550,9 +554,9 @@ class Chemistry:
         i0 = izMin[q0][0]
         ScaleHeight = 2. # km
         Sout[0:i0] = Sout[i0]*numpy.exp((altkm[0:i0]-altkm[i0])/ScaleHeight)
-        print 'izMin', izMin
-        print 'q0',q0
-        print 'i0',i0
+        print('izMin', izMin)
+        print('q0',q0)
+        print('i0',i0)
         # % Extend the source to low altitudes
         # ii=find(S0<=0);
         # i0=min(find(S0>0));
@@ -575,7 +579,7 @@ class Chemistry:
             y0 = self.ODE(Sout[iz],iz, ChemistryDict)
             yInitial[iz,0:4] = y0
             yInitial[iz,-1] = (y0[0]+y0[1]+y0[3])-y0[2]
-            print 'iz y0,', iz, y0
+            print('iz y0,', iz, y0)
 
         NeIn = dict()
         NeIn['Ne'] = yInitial[:,0]
@@ -616,7 +620,7 @@ class Chemistry:
                 tmpSout, tmpNeOut, y0 = self.Binary_Search(NeIn[iz],ChemistryDict, indx)
                 Sout[iz] = tmpSout
                 NeOut[iz] = y0[0]
-                print 'Ne2QZ iz,indx, IRIiz', iz,indx,altkm[iz],iriAltGrid[indx], NeIn[iz],y0[0], tmpSout
+                print('Ne2QZ iz,indx, IRIiz', iz,indx,altkm[iz],iriAltGrid[indx], NeIn[iz],y0[0], tmpSout)
         return Sout, NeOut
 
 
@@ -629,7 +633,11 @@ class Chemistry:
         """
 
        # now run IRI to get the profile in
-        iriDict = iri2016.IRI2016(tUnix,glat,glon,AltitudeMin,AltitudeMax,deltaAltitude)
+        iri_run = iri2016.IRI(time=datetime.datetime.utcfromtimestamp(tUnix),
+                              altkmrange=[AltitudeMin, AltitudeMax, deltaAltitude],
+                              glat=glat, glon=glon)
+        iriDict = {'Ne' : iri_run['ne'].data,
+                   'Altitude' : iri_run['alt_km'].data}#iri2016.IRI2016(tUnix,glat,glon,AltitudeMin,AltitudeMax,deltaAltitude)
         self.NeIn = iriDict['Ne']/1e6 # needs to be in cm^-3
         self.altkm = iriDict['Altitude']
 
@@ -638,9 +646,31 @@ class Chemistry:
         year = int(tUnix/(24.*3600.*365)+1970.)
         doy = -1*int((tUnix/(24.*3600))%365)
         utHrs = (tUnix/3600.)%24
+        
+        # Run MSIS to get atmospheric parameters
+        msis_run = msise00.run(time=datetime.datetime.utcfromtimestamp(tUnix),
+                               altkm=self.altkm, glat=glat, glon=glon)
+        
+        # Get total density from all species
+        mixed_density = msis_run['Total'].data[0, :, 0, 0]
+        
+        # Convert from SI to cgs units
+        mixed_density = mixed_density/1e6
+        
+        # Get neutral temperatures
+        neutral_temp = msis_run['Tn'].data[0, :, 0, 0]
+        
+        # Run MSIS for reference altitude
+        ref_msis_run = msise00.run(time=datetime.datetime.utcfromtimestamp(tUnix),
+                                   altkm=15, glat=glat, glon=glon)
+        ref_mixed_density = ref_msis_run['Total'].data[0, :, 0, 0]
+        ref_mixed_density = ref_mixed_density/1e6
+        neutral_temp = ref_msis_run['Tn'].data[0, :, 0, 0]
 
-        self.MSISDict = msis.MSIS(doy,utHrs,glat,glon,year,altkm=self.altkm, CGSorSI = 'CGS')
-        self.MSISatRef = msis.MSIS(doy,utHrs,glat,glon,year,altkm=numpy.array([15.]), CGSorSI = 'CGS')
+        self.MSISDict = {'Nm' : mixed_density,
+                         'Tn' : neutral_temp}#msis.MSIS(doy,utHrs,glat,glon,year,altkm=self.altkm, CGSorSI = 'CGS')
+        self.MSISatRef = {'Nm' : ref_mixed_density,
+                         'Tn' : neutral_temp}#msis.MSIS(doy,utHrs,glat,glon,year,altkm=numpy.array([15.]), CGSorSI = 'CGS')
         # [ZZZ]needs to be user specified
         options = dict()
         options['GammaType'] = 'Temp'
@@ -662,8 +692,8 @@ class Chemistry:
         """
         iriAltGrid = self.altkm
         qin = numpy.zeros(qz.shape[0])
-        print 'qz.shape, altkm.shape', qz.shape, altkm.shape
-        print 'self.y0, self.altkm', self.y0['Ne'].shape, self.altkm.shape
+        print('qz.shape, altkm.shape', qz.shape, altkm.shape)
+        print('self.y0, self.altkm', self.y0['Ne'].shape, self.altkm.shape)
         y0 = dict()
         for ikeys in self.y0.keys():
             y0[ikeys] = numpy.zeros(qz.shape[0])
@@ -697,13 +727,13 @@ class Chemistry:
                         # y0['NX'][iz] = self.y0['NX'][indx]
                         # y0['NposIon'][iz] = self.y0['NposIon'][indx]
 
-                        print altkm[iz],iriAltGrid[indx],qz[iz],self.Sin[indx]
+                        print(altkm[iz],iriAltGrid[indx],qz[iz],self.Sin[indx])
 
-                    print 'qin.shape,', qin.shape, y0['Ne'].shape, self.DregionChem['B'].shape
+                    print('qin.shape,', qin.shape, y0['Ne'].shape, self.DregionChem['B'].shape)
 
                     results = self.Integrate_ODE(y0,qin,DregionChemDict,IntType='5species')
-                    print results['Ne'].shape
-                    print '###############################'
+                    print(results['Ne'].shape)
+                    print('###############################')
                     #results = self.ODE(self.y0,qin,self.DregionChem,IntType='5species')
                 else:
                     raise ValueError("Ionization and altitude sizes do not agree")
@@ -745,14 +775,14 @@ if __name__ == "__main__":
                                                         options=options)
 
     # check values:
-    print 'alphaD', numpy.nanmax(DregionChem['alphaD'] - dataIn['alfad'])
-    print 'alphaDC', numpy.nanmax(DregionChem['alphaDC'] - dataIn['alfadc'])
-    print 'alphaI', numpy.nanmax(DregionChem['alphaI'] - dataIn['alfai'])
-    print 'beta', numpy.nanmax(DregionChem['beta']-dataIn['beta'])
-    print 'B', numpy.nanmax(DregionChem['B']-dataIn['Bcoef'])
-    print 'gamma', numpy.nanmax(DregionChem['gamma']-dataIn['gamma'])
-    print 'gammaX', numpy.nanmax(DregionChem['gammaX']-dataIn['gammaX'])
-    print 'Xbar', numpy.nanmax(DregionChem['Xbar'] - dataIn['Xbar'])
+    print('alphaD', numpy.nanmax(DregionChem['alphaD'] - dataIn['alfad']))
+    print('alphaDC', numpy.nanmax(DregionChem['alphaDC'] - dataIn['alfadc']))
+    print('alphaI', numpy.nanmax(DregionChem['alphaI'] - dataIn['alfai']))
+    print('beta', numpy.nanmax(DregionChem['beta']-dataIn['beta']))
+    print('B', numpy.nanmax(DregionChem['B']-dataIn['Bcoef']))
+    print('gamma', numpy.nanmax(DregionChem['gamma']-dataIn['gamma']))
+    print('gammaX', numpy.nanmax(DregionChem['gammaX']-dataIn['gammaX']))
+    print('Xbar', numpy.nanmax(DregionChem['Xbar'] - dataIn['Xbar']))
 
 
     # now want to validate previous results, using S0 from Everything.mat
@@ -818,7 +848,7 @@ if __name__ == "__main__":
     AltStepKm = 1.0
 
     t1970 = datetime.datetime(1970,1,1,0,0,0)
-    t2010 = datetime.datetime(2010,6,2,01,0,0)
+    t2010 = datetime.datetime(2010,6,2,1,0,0)
     tUnix = (t2010-t1970).total_seconds()
 
     glat = 45
@@ -826,14 +856,14 @@ if __name__ == "__main__":
 
     chem.Set_Inital_Ionization(tUnix,glat,glon,AltMinKm,AltMaxKm,AltStepKm)
 
-    print chem.Sin
+    print(chem.Sin)
 
     plt.figure(1)
     plt.semilogx(chem.NeIn, chem.altkm)
 
     plt.figure(2)
     plt.semilogx(chem.Sin, chem.altkm)
-    print 'Sin', chem.Sin
+    print('Sin', chem.Sin)
 
 
     plt.figure(3)
