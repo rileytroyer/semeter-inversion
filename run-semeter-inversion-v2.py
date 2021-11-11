@@ -36,13 +36,16 @@ np.seterr(invalid='ignore')
 
 
 # Read in config file with dictionary of specified inputs
-import config_2021_11_09 as config
+import config_2021_11_10 as config
 config_data = config.run_info['config_info']
 
 # Path to pfisr data directory
 pfisr_data_dir = config_data['isr_data_dir']
 
-# Path to store files in
+# File with times for events of interest
+reference_file = config_data['event_file']
+
+# Directory to save files to
 save_dir = config_data['save_dir']
 
 # Get location of PFISR
@@ -82,7 +85,7 @@ energy_bins = config_data['energy_bins']
 pfisr_files = config.run_info['run_files']
 
 
-# In[3]:
+# In[4]:
 
 
 def barrett_hays_range_energy_func(K):
@@ -211,6 +214,57 @@ def estimate_initial_number_flux(energy_bins, matrix_A):
             initial_num_flux[j] = 0
             
     return initial_num_flux
+
+def find_event_indices(utc_time):
+    """Function to find only indices of times of interest.
+    INPUT
+    utc_time
+        type: array of datetimes
+        about: utc datetimes of all pfisr data
+    OUTPUT
+    slices_n
+        type: list of integers
+        about: indices of pfisr data that is of interest
+    """
+    
+    # Find the date for the current pfisr file, this is a little tricky as
+    #...some pfisr files span multiple days
+    pfisr_dates = np.unique(np.array([d.date() for d in utc_time]))
+
+    # Dates that are in both pa database and pfisr file
+    pa_pfisr_dates = np.unique(np.array([d for d in pa_dates 
+                                         if d in pfisr_dates]))
+
+    # Loop through each of these dates and get correct indices
+    indices = []
+    for date in pa_pfisr_dates:
+            indices.append(np.argwhere(pa_dates == date))
+
+    # Flatten list of indices
+    indices = [item[0] for sublist in indices for item in sublist]
+
+    # Loop through each index and get data slices corresponding to the
+    #...start and stop times
+    slices_n = []
+    for index in indices:
+
+        # Get the date and start time of measurements
+        date = pa_database[index, 0]
+        start_time = date + ' ' + pa_database[index, 1]
+        end_time = date + ' ' + pa_database[index, 2]
+
+        # Convert to datetime
+        start_time = dt.strptime(start_time, '%Y-%m-%d %H:%M:%S')
+        end_time = dt.strptime(end_time, '%Y-%m-%d %H:%M:%S')
+
+        # Find which indices in pfisr data correspond
+        slices_n.append(np.argwhere((utc_time >= start_time) 
+                                    & (utc_time <= end_time)))
+
+    # Flatten pfisr array indices
+    slices_n = [item[0] for sublist in slices_n for item in sublist]
+    
+    return slices_n
 
 def get_isr_data(pfisr_filename, pfisr_data_dir):
     """Function to get relevant data from PFISR datafile.
@@ -699,16 +753,27 @@ lambda_data = np.loadtxt(lambda_filename, skiprows=5)
 lambda_interp = interp1d(lambda_data[:, 0], lambda_data[:, 1],
                          bounds_error=False, fill_value=0)
 
+# Read in file with pulsating aurora dates, times and types
+pa_database = np.loadtxt(reference_file, delimiter='\t', dtype=str)
+pa_database = pa_database[1:, :]
+
+# Convert dates to datetimes
+pa_dates = np.array([dt.strptime(d, '%Y-%m-%d').date() for d 
+                     in pa_database[:, 0]])
+
 
 # In[6]:
 
 
-for pfisr_filename in pfisr_files:
+for pfisr_filename in pfisr_files[5:]:
 
     # Read in the pfisr data
     (utc_time, unix_time, 
      pfisr_altitude,
      e_density, de_density) = get_isr_data(pfisr_filename, pfisr_data_dir)
+    
+    # Find indices of interest
+    slices_n = find_event_indices(utc_time)
 
     # Create a dictionary to store inversion results in
     inversion_results = {}
@@ -719,131 +784,139 @@ for pfisr_filename in pfisr_files:
                   + str(utc_time[0].date()) + '/')
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
+   
+    print(str(utc_time[0].date()))
 
-    try:    
-        print(str(utc_time[0].date()))
+    for slice_n in slices_n:
 
-        for slice_n, run_time in enumerate(utc_time):
+        run_time = utc_time[slice_n]
 
-            # Get MSIS calculated densities
+        # Get MSIS calculated densities
+        try:
             (total_msis_alt,
              msis_interp_density) = get_msis_density(run_time, 
                                                 altitude_bins,
                                                 max_alt=max_msis_alt,
                                                 glat=pfrr_lat,
                                                 glon=pfrr_lon)
-
-            # Get density for altitude bins
-            total_msis_density = msis_interp_density(total_msis_alt)
-            density_rho = msis_interp_density(altitude_bins)
-
-
-            # Calculate mass distance (s) for each altitude 
-            #...by integrating out to 1000 km (~infinity)
-            s = np.array([mass_distance(z) for z 
-                          in range(len(altitude_bins))])
+        except Exception as e:
+            print('Issue with MSIS model.', e)
+            continue
+            
+        # Get density for altitude bins
+        total_msis_density = msis_interp_density(total_msis_alt)
+        density_rho = msis_interp_density(altitude_bins)
 
 
-            # Calculate ion production rate for each energy and store
-            #...in dictionary
-            ion_prod_rate = {}
+        # Calculate mass distance (s) for each altitude 
+        #...by integrating out to 1000 km (~infinity)
+        s = np.array([mass_distance(z) for z 
+                      in range(len(altitude_bins))])
 
-            for i, energy in enumerate(energy_bins):
 
-                # Calculate range-energy value
-                R = barrett_hays_range_energy_func(energy)
+        # Calculate ion production rate for each energy and store
+        #...in dictionary
+        ion_prod_rate = {}
 
-                # Get the (s/R)(z) for the energy
-                s_R = s/R
+        for i, energy in enumerate(energy_bins):
 
-                # Use s/R to get Lambda function values
-                lambda_vals = lambda_interp(s_R)
+            # Calculate range-energy value
+            R = barrett_hays_range_energy_func(energy)
 
-                # Use all of this to calculate ion production rate 
-                #...as function of alt
-                q = (lambda_vals * density_rho * energy * F) / (35.5 * R)
+            # Get the (s/R)(z) for the energy
+            s_R = s/R
 
-                # Write to dictionary
-                ion_prod_rate[energy] = q
-                
-            # Construct the A matrix
-            matrix_A = np.zeros([len(altitude_bins),
-                                 len(energy_bins)])
+            # Use s/R to get Lambda function values
+            lambda_vals = lambda_interp(s_R)
 
-            # Loop through each energy value
-            for j in range(len(energy_bins)):
+            # Use all of this to calculate ion production rate 
+            #...as function of alt
+            q = (lambda_vals * density_rho * energy * F) / (35.5 * R)
 
-                # Get the size of the energy bin
-                #...first bin is from zero to energy
-                if j == 0:
-                    delta_E = energy_bins[j] - 0
-                else:
-                    delta_E = energy_bins[j] - energy_bins[j-1]
+            # Write to dictionary
+            ion_prod_rate[energy] = q
 
-                # Set column of matrix
-                matrix_A[:, j] = ion_prod_rate[energy_bins[j]]*(delta_E/F)
-                
-            # Get estimated ion production rate and error 
-            #...from isr measurements
+        # Construct the A matrix
+        matrix_A = np.zeros([len(altitude_bins),
+                             len(energy_bins)])
+
+        # Loop through each energy value
+        for j in range(len(energy_bins)):
+
+            # Get the size of the energy bin
+            #...first bin is from zero to energy
+            if j == 0:
+                delta_E = energy_bins[j] - 0
+            else:
+                delta_E = energy_bins[j] - energy_bins[j-1]
+
+            # Set column of matrix
+            matrix_A[:, j] = ion_prod_rate[energy_bins[j]]*(delta_E/F)
+
+        # Get estimated ion production rate and error 
+        #...from isr measurements
+        try:
             (q_estimate,
-             dq_estimate, alphas) = chem_isr_ion_production_rate(slice_n)
-            
-            # Make an initial guess of the number flux
-            initial_num_flux = estimate_initial_number_flux(energy_bins,
-                                                            matrix_A)
-            
-            # Perform the maximum entropy iterative process
-            (new_num_flux,
-             chi_square,
-             dof, converged) = maximum_entropy_iteration(initial_num_flux,
-                                                         altitude_bins,
-                                                         energy_bins,
-                                                         matrix_A,
-                                                         q_estimate, 
-                                                         dq_estimate)
-            
-            # Store results in dictionary
-            inversion_results = {}
+             dq_estimate,
+             alphas) = chem_isr_ion_production_rate(slice_n)
+        except:
+            print('Issue with ion production rate calculation.')
+            continue
 
-            # Write data to dictionary
-            d = {'altitude' : altitude_bins,
-                 'initial_density' : np.sqrt(np.dot(matrix_A,
-                                                initial_num_flux)/alphas),
-                 'modeled_density' : np.sqrt(np.dot(matrix_A,
-                                                new_num_flux)/alphas),
-                 'measured_density' : np.sqrt(q_estimate/alphas),
-                 'energy_bins' : energy_bins,
-                 'modeled_flux' : new_num_flux,
-                 'chi2' : chi_square,
-                 'dof' : dof,
-                 'converged' : converged,
-                 'units' : 'Values given in meters, seconds, electron-volts.'
-                }
+        # Make an initial guess of the number flux
+        initial_num_flux = estimate_initial_number_flux(energy_bins,
+                                                        matrix_A)
 
-            inversion_results[run_time] = d
+        # Perform the maximum entropy iterative process
+        (new_num_flux,
+         chi_square,
+         dof, converged) = maximum_entropy_iteration(initial_num_flux,
+                                                     altitude_bins,
+                                                     energy_bins,
+                                                     matrix_A,
+                                                     q_estimate, 
+                                                     dq_estimate)
 
-            # Plot the results and save to output directory
-            if slice_n%10 == 0:
-                save_inversion_density_plot(inversion_results,
-                                            run_time, output_dir)
-                save_inversion_numflux_plot(inversion_results,
-                                            run_time, output_dir)
-            
-            # Clear temporary files in /dev/shm directory in Linux
-            try:
-                os.system('rm /dev/shm/*')
-            except Exception as e: print(e)
-            
+        # Store results in dictionary
+        inversion_results = {}
 
-        # Write the dictionary with inversion data to a pickle file
-        with open(output_dir + 'inversion-data-' + str(utc_time[0].date()) 
-                  + '.pickle', 'wb') as handle:
-            pickle.dump(inversion_results, handle,
-                        protocol=pickle.HIGHEST_PROTOCOL)
+        # Write data to dictionary
+        d = {'altitude' : altitude_bins,
+             'initial_density' : np.sqrt(np.dot(matrix_A,
+                                            initial_num_flux)/alphas),
+             'modeled_density' : np.sqrt(np.dot(matrix_A,
+                                            new_num_flux)/alphas),
+             'measured_density' : np.sqrt(q_estimate/alphas),
+             'energy_bins' : energy_bins,
+             'modeled_flux' : new_num_flux,
+             'chi2' : chi_square,
+             'dof' : dof,
+             'converged' : converged,
+             'units' : 'Values given in meters, seconds, electron-volts.'
+            }
 
-        print('Finished!')
+        inversion_results[run_time] = d
 
-    except Exception as e: print(e)
+        # Plot the results and save to output directory
+        if slice_n%1 == 0:
+            save_inversion_density_plot(inversion_results,
+                                        run_time, output_dir)
+            save_inversion_numflux_plot(inversion_results,
+                                        run_time, output_dir)
+
+        # Clear temporary files in /dev/shm directory in Linux
+        try:
+            os.system('rm /dev/shm/*')
+        except Exception as e: print(e)
+
+
+    # Write the dictionary with inversion data to a pickle file
+    with open(output_dir + 'inversion-data-' + str(utc_time[0].date()) 
+              + '.pickle', 'wb') as handle:
+        pickle.dump(inversion_results, handle,
+                    protocol=pickle.HIGHEST_PROTOCOL)
+
+    print('Finished!')
 
 
 # In[ ]:

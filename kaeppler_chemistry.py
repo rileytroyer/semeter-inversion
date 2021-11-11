@@ -443,6 +443,7 @@ class Chemistry:
 
             Sign = NeTest-NeTarget
             Sprev = copy.copy(S)
+            
             if NeTest > NeTarget:
                 S = S/2.
 
@@ -456,11 +457,13 @@ class Chemistry:
                 break
 
 
-            kk=+1
+            kk = kk + 1
 
             if kk==100:
                 print('could not find bounds')
-                break
+                return None
+                #break
+                
             PrevSign = copy.copy(Sign)
             Neprev = copy.copy(NeTest)
 
@@ -495,16 +498,19 @@ class Chemistry:
                 Shigh = copy.copy(S1)
                 Nehigh = copy.copy(Ne)
 
-            kk=+1
+            kk = kk + 1
             if kk == 100:
                 print('too many iterations in binary search')
-                break
+                return None
+                #break
 
         # output phase
         NeOut = Ne
         Sout = S1
+   
         # calculate other parameters
         y0 = self.ODE(S1,iz, ChemistryDict)
+        
         return Sout, NeOut, y0
 
     def Calculate_Background_Ionization(self, altkm,IRIin, ChemistryDict):
@@ -520,7 +526,13 @@ class Chemistry:
 
                 continue
             else:
-                tmpSout, tmpNeOut, y0 = self.Binary_Search(IRIin[iz],ChemistryDict, iz)
+                
+                try:
+                    tmpSout, tmpNeOut, y0 = self.Binary_Search(IRIin[iz],ChemistryDict, iz)
+                except Exception as e:
+                    print('Issue with ode integration.', e)
+                    return None
+                    
                 Sout[iz] = tmpSout
                 #ZZZ need to generalize
 
@@ -596,7 +608,12 @@ class Chemistry:
             else:
                 AltDiff = numpy.abs(iriAltGrid-altkm[iz])
                 indx = numpy.where(AltDiff == numpy.min(AltDiff))[0][0]
-                tmpSout, tmpNeOut, y0 = self.Binary_Search(NeIn[iz],ChemistryDict, indx)
+                try:
+                    tmpSout, tmpNeOut, y0 = self.Binary_Search(NeIn[iz],ChemistryDict, indx)
+                except Exception as e:
+                    print('Issue with ODE integration.', e)
+                    return None
+                
                 Sout[iz] = tmpSout
                 NeOut[iz] = y0[0]
 #                 print('Ne2QZ iz,indx, IRIiz', iz,indx,altkm[iz],iriAltGrid[indx], NeIn[iz],y0[0], tmpSout)
