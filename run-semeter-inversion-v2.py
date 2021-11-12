@@ -877,9 +877,6 @@ for pfisr_filename in pfisr_files[5:]:
                                                      q_estimate, 
                                                      dq_estimate)
 
-        # Store results in dictionary
-        inversion_results = {}
-
         # Write data to dictionary
         d = {'altitude' : altitude_bins,
              'initial_density' : np.sqrt(np.dot(matrix_A,
@@ -897,12 +894,12 @@ for pfisr_filename in pfisr_files[5:]:
 
         inversion_results[run_time] = d
 
-        # Plot the results and save to output directory
-        if slice_n%1 == 0:
-            save_inversion_density_plot(inversion_results,
-                                        run_time, output_dir)
-            save_inversion_numflux_plot(inversion_results,
-                                        run_time, output_dir)
+#         # Plot the results and save to output directory
+#         if slice_n%1 == 0:
+#             save_inversion_density_plot(inversion_results,
+#                                         run_time, output_dir)
+#             save_inversion_numflux_plot(inversion_results,
+#                                         run_time, output_dir)
 
         # Clear temporary files in /dev/shm directory in Linux
         try:
