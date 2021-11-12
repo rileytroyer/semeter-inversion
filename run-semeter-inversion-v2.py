@@ -36,7 +36,7 @@ np.seterr(invalid='ignore')
 
 
 # Read in config file with dictionary of specified inputs
-import config_2021_11_10 as config
+import config_2021_11_12 as config
 config_data = config.run_info['config_info']
 
 # Path to pfisr data directory
@@ -765,7 +765,7 @@ pa_dates = np.array([dt.strptime(d, '%Y-%m-%d').date() for d
 # In[6]:
 
 
-for pfisr_filename in pfisr_files[5:]:
+for pfisr_filename in pfisr_files:
 
     # Read in the pfisr data
     (utc_time, unix_time, 
@@ -901,10 +901,10 @@ for pfisr_filename in pfisr_files[5:]:
 #             save_inversion_numflux_plot(inversion_results,
 #                                         run_time, output_dir)
 
-        # Clear temporary files in /dev/shm directory in Linux
-        try:
-            os.system('rm /dev/shm/*')
-        except Exception as e: print(e)
+#         # Clear temporary files in /dev/shm directory in Linux
+#         try:
+#             os.system('rm /dev/shm/*')
+#         except Exception as e: print(e)
 
 
     # Write the dictionary with inversion data to a pickle file
@@ -915,7 +915,10 @@ for pfisr_filename in pfisr_files[5:]:
 
     print('Finished!')
 
-
+# Clear temporary files in /dev/shm directory in Linux
+try:
+    os.system('rm /dev/shm/*')
+except Exception as e: print(e)
 # In[ ]:
 
 
