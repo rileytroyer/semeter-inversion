@@ -36,7 +36,7 @@ np.seterr(invalid='ignore')
 
 
 # Read in config file with dictionary of specified inputs
-import config_2021_11_12 as config
+import config_2021_11_17 as config
 config_data = config.run_info['config_info']
 
 # Path to pfisr data directory
@@ -554,7 +554,7 @@ def maximum_entropy_iteration(initial_num_flux, altitude_bins,
         
     # Get reduced chi square, which should be around 1
     diff=q_estimate-np.dot(matrix_A, new_num_flux)
-    dof = matrix_A.shape[0] - matrix_A.shape[1]
+    dof = len(q_estimate[dq_estimate < q_estimate]) - matrix_A.shape[1]
     
     # Notify of convergence
     if ((count < max_iterations) & (converged == True)):
