@@ -33,7 +33,7 @@ d = {
     'altitude_bins' : np.linspace(60e3, 144e3, 100),
     'energy_bins' : np.logspace(np.log10(1000), np.log10(500000), 25),
     'alpha_type' : 'stanford',
-    'start_file_i' : 0,
+    'start_file_i' : None,
     'end_file_i' : None
 
 }
