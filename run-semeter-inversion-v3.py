@@ -433,8 +433,17 @@ def isr_ion_production_rate(slice_n, alpha_type='vickrey'):
         # Add back in negatives and convert to SI
         q_estimate = q_estimate * pfisr_signs * 1e6
 
-        # To calculate error need an effective recombination coefficient
+        # Calculate the extracted effective recombination coefficient
         alphas = q_estimate / pfisr_density_interp(altitude_bins)**2
+        
+        # Match Gledhill above 90 km
+        e_region_cond = altitude_bins >= 90e3
+        alphas[e_region_cond] = [recombination_coeff(z/1000,
+                                               alpha_type='gledhill')
+                                 for z in altitude_bins[e_region_cond]]
+        
+        # Recalculate ion production rate
+        q_estimate = alphas * pfisr_density_interp(altitude_bins)**2
 
         # Get error dq = 2*alpha*n*dn
         dq_estimate = (2 * alphas
@@ -873,7 +882,7 @@ pa_dates = np.array([dt.strptime(d, '%Y-%m-%d').date() for d
 # In[5]:
 
 
-for alpha_type in ['vickrey', 'osepian', 'gledhill', 'stanford']:
+for alpha_type in ['stanford']:
     
     print('Starting:', alpha_type)
     
