@@ -36,7 +36,7 @@ np.seterr(invalid='ignore')
 
 
 # Read in config file with dictionary of specified inputs
-import config_2021_11_19 as config
+import config_2022_04_20 as config
 config_data = config.run_info['config_info']
 
 # Path to pfisr data directory
@@ -237,7 +237,8 @@ def get_isr_data(pfisr_filename, pfisr_data_dir):
 
     # Get time and convert to utc datetime
     unix_time = np.array(pfisr_file['Time']['UnixTime'])[:,0]
-    utc_time = np.array([dt.utcfromtimestamp(d) for d in unix_time])
+    utc_time = np.array([dt.utcfromtimestamp(d) 
+                         for d in unix_time])
 
     # Get the altitude array
     pfisr_altitude = np.array(pfisr_file['NeFromPower']
@@ -252,13 +253,28 @@ def get_isr_data(pfisr_filename, pfisr_data_dir):
     
     # Find the noise floor by averaging between 55km and 60km
     #...assume this should be zero
-    noise_floor = np.mean(e_density[(pfisr_altitude > 55000)
-                                    & (pfisr_altitude < 60000), :],
-                          axis=0)
     
+    # Calculate the power given that power = density/range^2
+    pfisr_range = np.array(pfisr_file['NeFromPower']
+                           ['Range'])[0, :]
+
+    # Turn 1D array into 2D array for elementwise division
+    pfisr_range = np.array([pfisr_range,]*e_density.shape[1])
+    pfisr_range = np.transpose(pfisr_range)
+    pfisr_power = np.divide(e_density, pfisr_range**2)
+
+    # Get the power bias
+    noise_floor = np.nanmean(pfisr_power[(pfisr_altitude > 55000)
+                                    & (pfisr_altitude < 60000), :],
+                              axis=0)
+
     # Loop through each column and subtract off noise floor
-    for j in range(e_density.shape[1]):
-        e_density[:, j] = e_density[:, j] - noise_floor[j]
+    for j in range(pfisr_power.shape[1]):
+        pfisr_power[:, j] = pfisr_power[:, j] - noise_floor[j]   
+
+    # Calculate new unbiased density
+    e_density = np.multiply(pfisr_power, pfisr_range**2)
+        
     
     # Get error values
     try:
@@ -882,7 +898,7 @@ pa_dates = np.array([dt.strptime(d, '%Y-%m-%d').date() for d
 # In[5]:
 
 
-for alpha_type in ['stanford']:
+for alpha_type in ['stanford','vickrey','osepian','gledhill']:
     
     print('Starting:', alpha_type)
     
