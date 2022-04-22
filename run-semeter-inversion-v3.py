@@ -87,6 +87,8 @@ alpha_type = config_data['alpha_type']
 # Get files to run code for
 pfisr_files = config.run_info['run_files']
 
+pfisr_files = pfisr_files[34:]
+
 
 # In[3]:
 
