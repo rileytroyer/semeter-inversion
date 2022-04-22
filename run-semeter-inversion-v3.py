@@ -87,7 +87,7 @@ alpha_type = config_data['alpha_type']
 # Get files to run code for
 pfisr_files = config.run_info['run_files']
 
-pfisr_files = pfisr_files[34:]
+pfisr_files = pfisr_files[34:43]
 
 
 # In[3]:
@@ -900,7 +900,7 @@ pa_dates = np.array([dt.strptime(d, '%Y-%m-%d').date() for d
 # In[5]:
 
 
-for alpha_type in ['stanford','vickrey','osepian','gledhill']:
+for alpha_type in ['vickrey','osepian','gledhill']:
     
     print('Starting:', alpha_type)
     
