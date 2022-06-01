@@ -36,7 +36,7 @@ np.seterr(invalid='ignore')
 
 
 # Read in config file with dictionary of specified inputs
-import config_2022_05_25 as config
+import config_2022_06_01 as config
 config_data = config.run_info['config_info']
 
 # Path to pfisr data directory
@@ -87,7 +87,7 @@ alpha_type = config_data['alpha_type']
 # Get files to run code for
 pfisr_files = config.run_info['run_files']
 
-pfisr_files = ['20220305.001_bc_nenotr_1min.h5']#pfisr_files[43:]
+pfisr_files = ['20220304.002_bc_nenotr_1min.h5']#pfisr_files[43:]
 
 
 # In[3]:
