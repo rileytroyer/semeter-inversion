@@ -30,7 +30,7 @@ d = {
     'max_iterations' : 10000,
     'convergence': 1e-2,
     'test_flux' : 1e11,	
-    'altitude_bins' : np.linspace(60e3, 144e3, 100),
+    'altitude_bins' : np.linspace(60e3, 144e3, 100), #np.linspace(60e3, 120e3, 75),
     'energy_bins' : np.logspace(np.log10(1000), np.log10(500000), 25),
     'alpha_type' : 'stanford',
     'start_file_i' : None,
